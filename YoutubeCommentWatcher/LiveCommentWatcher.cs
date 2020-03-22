@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Google.Apis.Services;
@@ -7,19 +6,34 @@ using Google.Apis.YouTube.v3;
 
 namespace YoutubeCommentWatcher {
 	class LiveCommentWatcher {
-		public static string apiKey;
-		public static string searchTerm;
+		private static YouTubeService youtubeService;
 		[STAThread]
 		static void Main() {
-			Console.WriteLine("Hello World!");
-			Console.WriteLine("Searching in Youtube\n");
-			apiKey = File.ReadAllText(@"apikey.txt");
-			Console.WriteLine("Enter search term:");
+			Console.WriteLine("Youtube Live Comment Watcher\n");
 
-			searchTerm = Console.ReadLine();
+			string apiKey = File.ReadAllText(@"ytapikey.txt");
+
+			Console.WriteLine("Enter Youtube video ID:");
+			string videoID = Console.ReadLine();
+
+			string path = @"chatlog\chatlog.txt";
+			File.WriteAllText(path, "");
+
+			Console.WriteLine("\nCOMMENTS\n=========================\n");
+
+			youtubeService = new YouTubeService(new BaseClientService.Initializer() {
+				ApiKey = apiKey,
+				ApplicationName = "CommentWatcher"
+			});
 
 			try {
-				new LiveCommentWatcher().Run().Wait();
+				string activeLiveChatID = GetLiveChatID(videoID);
+				if(activeLiveChatID != null) {
+					new LiveCommentWatcher().CommentWatcher(activeLiveChatID, null, 0).Wait();
+				}
+				else {
+					Console.WriteLine("Can't find liveChatID");
+				}
 			}
 			catch(AggregateException ex) {
 				foreach(var e in ex.InnerExceptions) {
@@ -31,44 +45,41 @@ namespace YoutubeCommentWatcher {
 			Console.ReadKey();
 		}
 
-		private async Task Run() {
-			var youtubeService = new YouTubeService(new BaseClientService.Initializer() {
-			ApiKey = apiKey,
-				ApplicationName = this.GetType().ToString()
-			});
+		public static string GetLiveChatID(string videoID) {
+			var videoList = youtubeService.Videos.List("liveStreamingDetails");
+			videoList.Id = videoID;
+			videoList.Fields = "items/liveStreamingDetails/activeLiveChatId";
 
-			var searchListRequest = youtubeService.Search.List("snippet");
-			searchListRequest.Q = searchTerm; // Replace with your search term.
-			searchListRequest.MaxResults = 50;
+			var videoListResponse = videoList.Execute();
 
-			// Call the search.list method to retrieve results matching the specified query term.
-			var searchListResponse = await searchListRequest.ExecuteAsync();
-
-			List<string> videos = new List<string>();
-			List<string> channels = new List<string>();
-			List<string> playlists = new List<string>();
-
-			// Add each result to the appropriate list, and then display the lists of
-			// matching videos, channels, and playlists.
-			foreach(var searchResult in searchListResponse.Items) {
-				switch(searchResult.Id.Kind) {
-					case "youtube#video":
-						videos.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.VideoId));
-						break;
-
-					case "youtube#channel":
-						channels.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.ChannelId));
-						break;
-
-					case "youtube#playlist":
-						playlists.Add(String.Format("{0} ({1})", searchResult.Snippet.Title, searchResult.Id.PlaylistId));
-						break;
+			foreach (var v in videoListResponse.Items) {
+				string liveChatID = v.LiveStreamingDetails.ActiveLiveChatId;
+				if(liveChatID != null && liveChatID.Length != 0) {
+					return liveChatID;
 				}
 			}
 
-			Console.WriteLine(String.Format("Videos:\n{0}\n", string.Join("\n", videos)));
-			Console.WriteLine(String.Format("Channels:\n{0}\n", string.Join("\n", channels)));
-			Console.WriteLine(String.Format("Playlists:\n{0}\n", string.Join("\n", playlists)));
+			return null;
+		}
+
+		private async Task CommentWatcher(string chatID, string nextToken, int delay) {
+			await Task.Delay(delay);
+
+			var liveChatRequest = youtubeService.LiveChatMessages.List(chatID, "snippet, authorDetails");
+			liveChatRequest.PageToken = nextToken;
+			liveChatRequest.Fields = "items(authorDetails(displayName), snippet(displayMessage)), nextPageToken, pollingIntervalMillis";
+
+			var liveChatResponse = liveChatRequest.Execute();
+			var chats = liveChatResponse.Items;
+			foreach(var chat in chats) {
+				string author = chat.AuthorDetails.DisplayName;
+				string message = chat.Snippet.DisplayMessage;
+				Console.WriteLine($"{author}: {message}");
+				string path = @"chatlog\chatlog.txt";
+				File.AppendAllLines(path, new[] { $"{author}: {message}" });
+			}
+
+			CommentWatcher(chatID, liveChatResponse.NextPageToken, (int)liveChatResponse.PollingIntervalMillis).Wait();
 		}
 	}
 }

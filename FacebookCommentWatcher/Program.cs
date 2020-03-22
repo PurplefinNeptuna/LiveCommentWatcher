@@ -21,12 +21,12 @@ public class Program {
 		Console.WriteLine("Hello World");
 		Console.WriteLine("Enter VideoID:");
 
-		string path = @"chatlog.txt";
+		string path = @"chatlog\chatlog.txt";
 		File.WriteAllText(path, "");
 
 		string videoID = Console.ReadLine();
 		Console.WriteLine($"\nGetting Data From {videoID}...");
-		string accessToken = File.ReadAllText(@"token.txt");
+		string accessToken = File.ReadAllText(@"fbtoken.txt");
 		string link = $"https://streaming-graph.facebook.com/{videoID}/live_comments?access_token={accessToken}&comment_rate=one_per_two_seconds&fields=from{{name}},created_time,message";
 
 		var evt = new EventSourceReader(new Uri(link)).Start();
@@ -55,7 +55,7 @@ public class Program {
 
 		string newChat = $"{chat.from.name}: {chat.message}";
 		Console.WriteLine(newChat);
-		string path = @"chatlog.txt";
+		string path = @"chatlog\chatlog.txt";
 		File.AppendAllLines(path, new[] { newChat });
 	}
 }

@@ -5,7 +5,12 @@ VisualStudioVersion = 16.0.29503.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FacebookCommentWatcher", "FacebookCommentWatcher\FacebookCommentWatcher.csproj", "{0845EE53-850C-4744-98C7-6C96851FE9C7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YoutubeCommentWatcher", "YoutubeCommentWatcher\YoutubeCommentWatcher.csproj", "{C92979ED-A6C8-4FCE-9238-C9C3F2A3503D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "YoutubeCommentWatcher", "YoutubeCommentWatcher\YoutubeCommentWatcher.csproj", "{C92979ED-A6C8-4FCE-9238-C9C3F2A3503D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{ACE12BAD-6A52-4049-B0A6-E08E3799DD51}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
