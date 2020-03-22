@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Threading.Tasks;
+using System.Threading;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
 
@@ -29,7 +29,12 @@ namespace YoutubeCommentWatcher {
 			try {
 				string activeLiveChatID = GetLiveChatID(videoID);
 				if(activeLiveChatID != null) {
-					new LiveCommentWatcher().CommentWatcher(activeLiveChatID, null, 0).Wait();
+					string nextToken = null;
+					int delay = 0;
+					while(true) {
+						(nextToken,delay) = CommentWatcher(activeLiveChatID, nextToken);
+						Thread.Sleep(delay);
+					}
 				}
 				else {
 					Console.WriteLine("Can't find liveChatID");
@@ -52,7 +57,7 @@ namespace YoutubeCommentWatcher {
 
 			var videoListResponse = videoList.Execute();
 
-			foreach (var v in videoListResponse.Items) {
+			foreach(var v in videoListResponse.Items) {
 				string liveChatID = v.LiveStreamingDetails.ActiveLiveChatId;
 				if(liveChatID != null && liveChatID.Length != 0) {
 					return liveChatID;
@@ -62,9 +67,7 @@ namespace YoutubeCommentWatcher {
 			return null;
 		}
 
-		private async Task CommentWatcher(string chatID, string nextToken, int delay) {
-			await Task.Delay(delay);
-
+		private static (string, int) CommentWatcher(string chatID, string nextToken) {
 			var liveChatRequest = youtubeService.LiveChatMessages.List(chatID, "snippet, authorDetails");
 			liveChatRequest.PageToken = nextToken;
 			liveChatRequest.Fields = "items(authorDetails(displayName), snippet(displayMessage)), nextPageToken, pollingIntervalMillis";
@@ -79,7 +82,8 @@ namespace YoutubeCommentWatcher {
 				File.AppendAllLines(path, new[] { $"{author}: {message}" });
 			}
 
-			CommentWatcher(chatID, liveChatResponse.NextPageToken, (int)liveChatResponse.PollingIntervalMillis).Wait();
+			//await CommentWatcher(chatID, liveChatResponse.NextPageToken, (int)liveChatResponse.PollingIntervalMillis);
+			return (liveChatResponse.NextPageToken, (int)liveChatResponse.PollingIntervalMillis);
 		}
 	}
 }
